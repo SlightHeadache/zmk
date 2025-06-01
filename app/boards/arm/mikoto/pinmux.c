@@ -11,10 +11,9 @@
 #include <zephyr/sys/sys_io.h>
 #include <zephyr/devicetree.h>
 
-static int pinmux_mikoto_init(const struct device *port) {
-    ARG_UNUSED(port);
+static int pinmux_mikoto_init(void) {
 
-#if CONFIG_BOARD_MIKOTO_520
+#if CONFIG_BOARD_MIKOTO
     const struct device *p0 = DEVICE_DT_GET(DT_NODELABEL(gpio0));
     const struct device *p1 = DEVICE_DT_GET(DT_NODELABEL(gpio1));
 #if CONFIG_BOARD_MIKOTO_CHARGER_CURRENT_40MA

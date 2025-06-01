@@ -4,7 +4,7 @@ sidebar_label: Customizing ZMK
 ---
 
 After verifying you can successfully flash the default firmware, you will probably want to begin customizing your keymap and other keyboard options.
-[In the initial setup tutorial](user-setup.md), you created a Github repository called `zmk-config`. This repository is a discrete filesystem which works
+[In the initial setup tutorial](user-setup.mdx), you created a Github repository called `zmk-config`. This repository is a discrete filesystem which works
 with the main `zmk` firmware repository to build your desired firmware. The main advantage of a discrete configuration folder is ensuring that the
 working components of ZMK are kept separate from your personal keyboard settings, reducing the amount of file manipulation in the configuration process.
 This makes flashing ZMK to your keyboard much easier, especially because you don't need to keep an up-to-date copy of zmk on your computer at all times.
@@ -28,7 +28,7 @@ Refer to the [Configuration](/docs/config) documentation for more details on thi
 ## Keymap
 
 Once you have the basic user config completed, you can find the keymap file in `config/<keyboard>.keymap` and customize from there.
-Refer to the [Keymap](features/keymaps.md) documentation to learn more.
+Refer to the [Keymaps](keymaps/index.mdx) documentation to learn more.
 
 ## Publishing
 
@@ -40,21 +40,21 @@ If you need to, a review of [Learn The Basics Of Git In Under 10 Minutes](https:
 :::
 
 :::note
-It is also possible to build firmware locally on your computer by following the [toolchain setup](development/setup.md) and
-[building instructions](development/build-flash.md), which includes pointers to
-[building using your `zmk-config` folder](development/build-flash.md#building-from-zmk-config-folder).
+It is also possible to build firmware locally on your computer by following the [toolchain setup](development/local-toolchain/setup/index.md) and
+[building instructions](development/local-toolchain/build-flash.mdx), which includes pointers to
+[building using your `zmk-config` folder](development/local-toolchain/build-flash.mdx#building-from-zmk-config-folder).
 :::
 
 ## Flashing Your Changes
 
 For normal keyboards, follow the same flashing instructions as before to flash your updated firmware.
 
-For split keyboards, only the central (left) side will need to be reflashed if you are just updating your keymap.
-More troubleshooting information for split keyboards can be found [here](troubleshooting.md#split-keyboard-halves-unable-to-pair).
+For [split keyboards](features/split-keyboards.md#building-and-flashing-firmware), only the central (left) side will need to be reflashed if you are just updating your keymap.
+More troubleshooting information for split keyboards can be found [here](troubleshooting/connection-issues.mdx#split-keyboard-halves-unable-to-pair).
 
 ## Building Additional Keyboards
 
-You can build additional keyboards with GitHub actions by appending them to `build.yml` in your `zmk-config` folder. For instance assume that we have set up a Corne shield with nice!nano during [initial setup](user-setup.md) and we want to add a Lily58 shield with nice!nano v2. The following is an example `build.yaml` file that would accomplish that:
+You can build additional keyboards with GitHub actions by appending them to `build.yml` in your `zmk-config` folder. For instance assume that we have set up a Corne shield with nice!nano during [initial setup](user-setup.mdx) and we want to add a Lily58 shield with nice!nano v2. The following is an example `build.yaml` file that would accomplish that:
 
 ```yaml
 include:

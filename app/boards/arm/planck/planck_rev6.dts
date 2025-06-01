@@ -9,6 +9,11 @@
 #include <st/f3/stm32f303c(b-c)tx-pinctrl.dtsi>
 #include <dt-bindings/zmk/matrix_transform.h>
 
+#include <layouts/common/ortho_4x12/1x2u.dtsi>
+#include <layouts/common/ortho_4x12/2x2u.dtsi>
+#include <layouts/common/ortho_4x12/all1u.dtsi>
+
+
 / {
     model = "Plack PCD, rev6";
     compatible = "planck,rev6", "st,stm32f303";
@@ -16,14 +21,12 @@
     chosen {
         zephyr,sram = &sram0;
         zephyr,flash = &flash0;
-        zephyr,console = &cdc_acm_uart;
         zmk,kscan = &kscan0;
-        zmk,matrix_transform = &layout_grid_transform;
+        zmk,physical-layout = &layout_ortho_4x12_all1u;
     };
 
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
-        label = "KSCAN";
                 diode-direction = "col2row";
         row-gpios
             = <&gpioa 10 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
@@ -43,6 +46,20 @@
             , <&gpioa 7  GPIO_ACTIVE_HIGH>
             , <&gpiob 0  GPIO_ACTIVE_HIGH>
             ;
+    };
+
+    encoder: encoder {
+        compatible = "alps,ec11";
+        a-gpios = <&gpiob 12 GPIO_PULL_UP>;
+        b-gpios = <&gpiob 13 GPIO_PULL_UP>;
+        steps = <80>;
+        status = "disabled";
+    };
+
+    sensors: sensors {
+        compatible = "zmk,keymap-sensors";
+        sensors = <&encoder>;
+        triggers-per-rotation = <20>;
     };
 
 layout_grid_transform:
@@ -83,14 +100,10 @@ layout_2x2u_transform:
     };
 };
 
-&usb {
+zephyr_udc0: &usb {
     pinctrl-0 = <&usb_dm_pa11 &usb_dp_pa12>;
     pinctrl-names = "default";
     status = "okay";
-    cdc_acm_uart: cdc_acm_uart {
-        compatible = "zephyr,cdc-acm-uart";
-        label = "CDC_ACM_0";
-    };
 };
 
 &clk_hse {
@@ -125,8 +138,19 @@ layout_2x2u_transform:
 
         /* Set 6Kb of storage at the end of the 256Kb of flash */
         storage_partition: partition@3e800 {
-            label = "storage";
             reg = <0x0003e800 0x00001800>;
         };
     };
+};
+
+&layout_ortho_4x12_all1u {
+    transform = <&layout_grid_transform>;
+};
+
+&layout_ortho_4x12_1x2u {
+    transform = <&layout_mit_transform>;
+};
+
+&layout_ortho_4x12_2x2u {
+    transform = <&layout_2x2u_transform>;
 };

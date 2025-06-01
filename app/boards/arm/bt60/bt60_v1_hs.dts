@@ -6,12 +6,12 @@
 
 /dts-v1/;
 #include "bt60.dtsi"
-
+#include <layouts/common/60percent/ansi.dtsi>
 
 / {
     chosen {
         zmk,kscan = &kscan0;
-        zmk,matrix_transform = &default_transform;
+        zmk,physical-layout = &layout_60_ansi;
     };
 
     default_transform: keymap_transform_0 {
@@ -30,7 +30,8 @@
 
     kscan0: kscan_0 {
         compatible = "zmk,kscan-gpio-matrix";
-        label = "KSCAN";
+        wakeup-source;
+
         diode-direction = "col2row";
 
         col-gpios
@@ -58,4 +59,8 @@
             , <&gpio0 23 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>
             ;
     };
+};
+
+&layout_60_ansi {
+    transform = <&default_transform>;
 };

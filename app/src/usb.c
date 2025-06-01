@@ -20,17 +20,18 @@
 LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 
 static enum usb_dc_status_code usb_status = USB_DC_UNKNOWN;
+static bool is_configured;
 
 static void raise_usb_status_changed_event(struct k_work *_work) {
-    ZMK_EVENT_RAISE(new_zmk_usb_conn_state_changed(
-        (struct zmk_usb_conn_state_changed){.conn_state = zmk_usb_get_conn_state()}));
+    raise_zmk_usb_conn_state_changed(
+        (struct zmk_usb_conn_state_changed){.conn_state = zmk_usb_get_conn_state()});
 }
 
 K_WORK_DEFINE(usb_status_notifier_work, raise_usb_status_changed_event);
 
-enum usb_dc_status_code zmk_usb_get_status() { return usb_status; }
+enum usb_dc_status_code zmk_usb_get_status(void) { return usb_status; }
 
-enum zmk_usb_conn_state zmk_usb_get_conn_state() {
+enum zmk_usb_conn_state zmk_usb_get_conn_state(void) {
     LOG_DBG("state: %d", usb_status);
     switch (usb_status) {
     case USB_DC_SUSPEND:
@@ -49,6 +50,10 @@ enum zmk_usb_conn_state zmk_usb_get_conn_state() {
     }
 }
 
+bool zmk_usb_is_hid_ready(void) {
+    return zmk_usb_get_conn_state() == ZMK_USB_CONN_HID && is_configured;
+}
+
 void usb_status_cb(enum usb_dc_status_code status, const uint8_t *params) {
     // Start-of-frame events are too frequent and noisy to notify, and they're
     // not used within ZMK
@@ -62,10 +67,15 @@ void usb_status_cb(enum usb_dc_status_code status, const uint8_t *params) {
     }
 #endif
     usb_status = status;
+    if (zmk_usb_get_conn_state() == ZMK_USB_CONN_HID) {
+        is_configured |= usb_status == USB_DC_CONFIGURED;
+    } else {
+        is_configured = false;
+    }
     k_work_submit(&usb_status_notifier_work);
 };
 
-static int zmk_usb_init(const struct device *_arg) {
+static int zmk_usb_init(void) {
     int usb_enable_ret;
 
     usb_enable_ret = usb_enable(usb_status_cb);

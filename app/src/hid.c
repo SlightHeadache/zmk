@@ -25,12 +25,13 @@ static uint8_t keys_held = 0;
 
 #endif /* IS_ENABLED(CONFIG_ZMK_USB_BOOT) */
 
-#if IS_ENABLED(CONFIG_ZMK_MOUSE)
+#if IS_ENABLED(CONFIG_ZMK_POINTING)
 
-static struct zmk_hid_mouse_report mouse_report = {.report_id = ZMK_HID_REPORT_ID_MOUSE,
-                                                   .body = {.buttons = 0}};
+static struct zmk_hid_mouse_report mouse_report = {
+    .report_id = ZMK_HID_REPORT_ID_MOUSE,
+    .body = {.buttons = 0, .d_x = 0, .d_y = 0, .d_scroll_y = 0}};
 
-#endif // IS_ENABLED(CONFIG_ZMK_MOUSE)
+#endif // IS_ENABLED(CONFIG_ZMK_POINTING)
 
 // Keep track of how often a modifier was pressed.
 // Only release the modifier if the count is 0.
@@ -47,7 +48,7 @@ static zmk_mod_flags_t masked_modifiers = 0;
 
 #define GET_MODIFIERS (keyboard_report.body.modifiers)
 
-zmk_mod_flags_t zmk_hid_get_explicit_mods() { return explicit_modifiers; }
+zmk_mod_flags_t zmk_hid_get_explicit_mods(void) { return explicit_modifiers; }
 
 int zmk_hid_register_mod(zmk_mod_t modifier) {
     explicit_modifier_counts[modifier]++;
@@ -117,7 +118,7 @@ static zmk_hid_boot_report_t *boot_report_rollover(uint8_t modifiers) {
 #define TOGGLE_KEYBOARD(code, val) WRITE_BIT(keyboard_report.body.keys[code / 8], code % 8, val)
 
 #if IS_ENABLED(CONFIG_ZMK_USB_BOOT)
-zmk_hid_boot_report_t *zmk_hid_get_boot_report() {
+zmk_hid_boot_report_t *zmk_hid_get_boot_report(void) {
     if (keys_held > HID_BOOT_KEY_LEN) {
         return boot_report_rollover(keyboard_report.body.modifiers);
     }
@@ -126,7 +127,7 @@ zmk_hid_boot_report_t *zmk_hid_get_boot_report() {
     memset(&boot_report.keys, 0, HID_BOOT_KEY_LEN);
     int ix = 0;
     uint8_t base_code = 0;
-    for (int i = 0; i < (ZMK_HID_KEYBOARD_NKRO_MAX_USAGE + 1) / 8; ++i) {
+    for (int i = 0; i < sizeof(keyboard_report.body.keys); ++i) {
         if (ix == keys_held) {
             break;
         }
@@ -187,7 +188,7 @@ static inline bool check_keyboard_usage(zmk_key_t usage) {
     }
 
 #if IS_ENABLED(CONFIG_ZMK_USB_BOOT)
-zmk_hid_boot_report_t *zmk_hid_get_boot_report() {
+zmk_hid_boot_report_t *zmk_hid_get_boot_report(void) {
     if (keys_held > HID_BOOT_KEY_LEN) {
         return boot_report_rollover(keyboard_report.body.modifiers);
     }
@@ -249,8 +250,9 @@ static inline int check_keyboard_usage(zmk_key_t usage) {
 #endif
 
 #define TOGGLE_CONSUMER(match, val)                                                                \
-    COND_CODE_1(IS_ENABLED(CONFIG_ZMK_HID_CONSUMER_REPORT_USAGES_BASIC),                           \
-                (if (val > 0xFF) { return -ENOTSUP; }), ())                                        \
+    if (val > ZMK_HID_CONSUMER_MAX_USAGE) {                                                        \
+        return -ENOTSUP;                                                                           \
+    }                                                                                              \
     for (int idx = 0; idx < CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE; idx++) {                          \
         if (consumer_report.body.keys[idx] != match) {                                             \
             continue;                                                                              \
@@ -268,7 +270,7 @@ int zmk_hid_implicit_modifiers_press(zmk_mod_flags_t new_implicit_modifiers) {
     return current == GET_MODIFIERS ? 0 : 1;
 }
 
-int zmk_hid_implicit_modifiers_release() {
+int zmk_hid_implicit_modifiers_release(void) {
     implicit_modifiers = 0;
     zmk_mod_flags_t current = GET_MODIFIERS;
     SET_MODIFIERS(explicit_modifiers);
@@ -282,7 +284,7 @@ int zmk_hid_masked_modifiers_set(zmk_mod_flags_t new_masked_modifiers) {
     return current == GET_MODIFIERS ? 0 : 1;
 }
 
-int zmk_hid_masked_modifiers_clear() {
+int zmk_hid_masked_modifiers_clear(void) {
     masked_modifiers = 0;
     zmk_mod_flags_t current = GET_MODIFIERS;
     SET_MODIFIERS(explicit_modifiers);
@@ -312,7 +314,9 @@ bool zmk_hid_keyboard_is_pressed(zmk_key_t code) {
     return check_keyboard_usage(code);
 }
 
-void zmk_hid_keyboard_clear() { memset(&keyboard_report.body, 0, sizeof(keyboard_report.body)); }
+void zmk_hid_keyboard_clear(void) {
+    memset(&keyboard_report.body, 0, sizeof(keyboard_report.body));
+}
 
 int zmk_hid_consumer_press(zmk_key_t code) {
     TOGGLE_CONSUMER(0U, code);
@@ -324,7 +328,9 @@ int zmk_hid_consumer_release(zmk_key_t code) {
     return 0;
 };
 
-void zmk_hid_consumer_clear() { memset(&consumer_report.body, 0, sizeof(consumer_report.body)); }
+void zmk_hid_consumer_clear(void) {
+    memset(&consumer_report.body, 0, sizeof(consumer_report.body));
+}
 
 bool zmk_hid_consumer_is_pressed(zmk_key_t key) {
     for (int idx = 0; idx < CONFIG_ZMK_HID_CONSUMER_REPORT_SIZE; idx++) {
@@ -365,7 +371,7 @@ bool zmk_hid_is_pressed(uint32_t usage) {
     return false;
 }
 
-#if IS_ENABLED(CONFIG_ZMK_MOUSE)
+#if IS_ENABLED(CONFIG_ZMK_POINTING)
 
 // Keep track of how often a button was pressed.
 // Only release the button if the count is 0.
@@ -426,22 +432,48 @@ int zmk_hid_mouse_buttons_release(zmk_mouse_button_flags_t buttons) {
     }
     return 0;
 }
-void zmk_hid_mouse_clear() { memset(&mouse_report.body, 0, sizeof(mouse_report.body)); }
 
-#endif // IS_ENABLED(CONFIG_ZMK_MOUSE)
-
-struct zmk_hid_keyboard_report *zmk_hid_get_keyboard_report() {
-    return &keyboard_report;
+void zmk_hid_mouse_movement_set(int16_t hwheel, int16_t wheel) {
+    mouse_report.body.d_x = hwheel;
+    mouse_report.body.d_y = wheel;
+    LOG_DBG("Mouse movement set to %d/%d", mouse_report.body.d_x, mouse_report.body.d_y);
 }
 
-struct zmk_hid_consumer_report *zmk_hid_get_consumer_report() {
-    return &consumer_report;
+void zmk_hid_mouse_movement_update(int16_t hwheel, int16_t wheel) {
+    mouse_report.body.d_x += hwheel;
+    mouse_report.body.d_y += wheel;
+    LOG_DBG("Mouse movement updated to %d/%d", mouse_report.body.d_x, mouse_report.body.d_y);
 }
 
-#if IS_ENABLED(CONFIG_ZMK_MOUSE)
+void zmk_hid_mouse_scroll_set(int16_t hwheel, int16_t wheel) {
+    mouse_report.body.d_scroll_x = hwheel;
+    mouse_report.body.d_scroll_y = wheel;
 
-struct zmk_hid_mouse_report *zmk_hid_get_mouse_report() {
-    return &mouse_report;
+    LOG_DBG("Mouse scroll set to %d/%d", mouse_report.body.d_scroll_x,
+            mouse_report.body.d_scroll_y);
 }
 
-#endif // IS_ENABLED(CONFIG_ZMK_MOUSE)
+void zmk_hid_mouse_scroll_update(int16_t hwheel, int16_t wheel) {
+    mouse_report.body.d_scroll_x += hwheel;
+    mouse_report.body.d_scroll_y += wheel;
+
+    LOG_DBG("Mouse scroll updated to X: %d/%d", mouse_report.body.d_scroll_x,
+            mouse_report.body.d_scroll_y);
+}
+
+void zmk_hid_mouse_clear(void) {
+    LOG_DBG("Mouse report cleared");
+    memset(&mouse_report.body, 0, sizeof(mouse_report.body));
+}
+
+#endif // IS_ENABLED(CONFIG_ZMK_POINTING)
+
+struct zmk_hid_keyboard_report *zmk_hid_get_keyboard_report(void) { return &keyboard_report; }
+
+struct zmk_hid_consumer_report *zmk_hid_get_consumer_report(void) { return &consumer_report; }
+
+#if IS_ENABLED(CONFIG_ZMK_POINTING)
+
+struct zmk_hid_mouse_report *zmk_hid_get_mouse_report(void) { return &mouse_report; }
+
+#endif // IS_ENABLED(CONFIG_ZMK_POINTING)
